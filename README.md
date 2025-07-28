@@ -1,1 +1,3 @@
-# subtitle-sync-and-quality-control-platform-76800
+# Project Repository
+
+This is the initial README file for the project.
