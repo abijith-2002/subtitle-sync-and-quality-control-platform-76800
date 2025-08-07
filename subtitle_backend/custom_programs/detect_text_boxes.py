@@ -24,6 +24,9 @@ import json
 import os
 from typing import List, Tuple
 
+import pytesseract
+
+
 # PUBLIC_INTERFACE
 def extract_frames(video_path: str, start_sec: float, end_sec: float, fps: int = 1) -> List[np.ndarray]:
     """
@@ -89,21 +92,31 @@ def detect_text_regions(frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
 # PUBLIC_INTERFACE
 def detect_text_boxes_in_timeframe(video_path: str, start_sec: float, end_sec: float, fps: int = 1):
     """
-    Detect all text region bounding boxes in the frames between start_sec and end_sec.
+    Detect all text region bounding boxes in the frames between start_sec and end_sec and extract the text within each box.
 
     Args:
         video_path: Path to video.
         start_sec, end_sec: Time range in seconds.
 
     Returns:
-        List of dicts containing "frame_idx", "box": [x, y, w, h]
+        List of dicts containing "frame_idx", "box": [x, y, w, h], "text": <detected_text>
     """
     frames = extract_frames(video_path, start_sec, end_sec, fps=fps)
     results = []
     for idx, frame in enumerate(frames):
         boxes = detect_text_regions(frame)
         for box in boxes:
-            results.append({"frame_idx": idx, "box": list(box)})
+            x, y, w, h = box
+            crop = frame[y:y+h, x:x+w]
+            # Convert to RGB for pytesseract
+            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+            # Extract text with pytesseract
+            text = pytesseract.image_to_string(crop_rgb, config='--psm 6').strip()
+            results.append({
+                "frame_idx": idx,
+                "box": list(box),
+                "text": text
+            })
     return results
 
 if __name__ == "__main__":
@@ -121,15 +134,20 @@ if __name__ == "__main__":
         print("ERROR: End time must be after start time.")
         exit(1)
     positions = detect_text_boxes_in_timeframe(args.video, args.start, args.end, fps=args.fps)
-    print(json.dumps(positions, indent=2))
 
-    # Write the detected positions to text_boxes.txt as plain text, one line per box
+    # Print the position and detected text as JSON
+    print(json.dumps(positions, indent=2))
+    # Also print detected text per box
+    for entry in positions:
+        print(f'frame_idx: {entry["frame_idx"]}, box: {entry["box"]}, text: "{entry["text"]}"')
+
+    # Write the detected positions and text to text_boxes.txt as plain text, one line per box
     txtbox_file = os.path.join(os.path.dirname(__file__), "text_boxes.txt")
     try:
         with open(txtbox_file, "w") as outf:
             for entry in positions:
-                # Example format: frame_idx: 3, box: [x, y, w, h]
-                line = f'frame_idx: {entry["frame_idx"]}, box: {entry["box"]}'
+                # New format: frame_idx: 3, box: [x, y, w, h], text: Detected Text
+                line = f'frame_idx: {entry["frame_idx"]}, box: {entry["box"]}, text: {entry["text"].replace(chr(10), " ").replace(chr(13), " ")}'
                 outf.write(line + "\n")
     except Exception as e:
         print(f"ERROR writing text_boxes.txt: {e}")
