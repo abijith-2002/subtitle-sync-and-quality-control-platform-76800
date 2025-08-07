@@ -110,10 +110,39 @@ def detect_text_boxes_in_timeframe(video_path: str, start_sec: float, end_sec: f
         for box in boxes:
             x, y, w, h = box
             crop = frame[y:y+h, x:x+w]
+
+            # Check crop size for being too small (EasyOCR fails on tiny images)
+            if crop.shape[0] < 15 or crop.shape[1] < 15:
+                # Skip too-tiny regions (likely noise, or EasyOCR won't work)
+                continue
+
+            # Optionally resize very small crops to a reasonable size for OCR
+            target_min_size = 50
+            if crop.shape[0] < target_min_size or crop.shape[1] < target_min_size:
+                scale_h = max(target_min_size / crop.shape[0], 1)
+                scale_w = max(target_min_size / crop.shape[1], 1)
+                scale = max(scale_h, scale_w)
+                new_w = max(int(crop.shape[1] * scale), target_min_size)
+                new_h = max(int(crop.shape[0] * scale), target_min_size)
+                crop = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_CUBIC)
+
             # EasyOCR expects RGB
             crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+
             # Extract text with EasyOCR
-            dets = reader.readtext(crop_rgb, detail=0)
+            try:
+                dets = reader.readtext(crop_rgb, detail=0, paragraph=True)
+            except Exception as e:
+                # Save error for debugging
+                dets = []
+                text = f"[EasyOCR Error: {e}]"
+                results.append({
+                    "frame_idx": idx,
+                    "box": list(box),
+                    "text": text
+                })
+                continue
+
             # Join results if multiple lines/words detected
             text = " ".join(dets).strip()
             results.append({
@@ -141,9 +170,24 @@ if __name__ == "__main__":
 
     # Print the position and detected text as JSON
     print(json.dumps(positions, indent=2))
-    # Also print detected text per box
+    # Also print detected text per box, and log any empty or error results for diagnosis
     for entry in positions:
         print(f'frame_idx: {entry["frame_idx"]}, box: {entry["box"]}, text: "{entry["text"]}"')
+        # Diagnostic: print warning for empty or obviously erroneous detection results
+        if entry["text"] == "" or entry["text"].startswith("[EasyOCR Error"):
+            print(f"[DIAG] Empty/OCR error: box={entry['box']}")
+
+    # Optional: Save diagnostic crops for visual debug (uncomment if needed)
+    # for i, entry in enumerate(positions):
+    #     if entry['text'] == "" or entry["text"].startswith("[EasyOCR Error"):
+    #         x, y, w, h = entry['box']
+    #         frame_idx = entry["frame_idx"]
+    #         out_dir = os.path.join(os.path.dirname(__file__), "ocr_debug_crops")
+    #         os.makedirs(out_dir, exist_ok=True)
+    #         frame = extract_frames(args.video, args.start, args.end, fps=args.fps)[frame_idx]
+    #         crop = frame[y:y+h, x:x+w]
+    #         file_out = os.path.join(out_dir, f"frame{frame_idx}_box_{x}_{y}_{w}_{h}.png")
+    #         cv2.imwrite(file_out, crop)
 
     # Write the detected positions and text to text_boxes.txt as plain text, one line per box
     txtbox_file = os.path.join(os.path.dirname(__file__), "text_boxes.txt")
