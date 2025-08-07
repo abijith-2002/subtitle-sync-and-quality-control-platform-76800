@@ -45,3 +45,4 @@ python-jose[cryptography]
 opencv-python
 numpy
 easyocr
+pysubs2
