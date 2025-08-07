@@ -122,3 +122,14 @@ if __name__ == "__main__":
         exit(1)
     positions = detect_text_boxes_in_timeframe(args.video, args.start, args.end, fps=args.fps)
     print(json.dumps(positions, indent=2))
+
+    # Write the detected positions to text_boxes.txt as plain text, one line per box
+    txtbox_file = os.path.join(os.path.dirname(__file__), "text_boxes.txt")
+    try:
+        with open(txtbox_file, "w") as outf:
+            for entry in positions:
+                # Example format: frame_idx: 3, box: [x, y, w, h]
+                line = f'frame_idx: {entry["frame_idx"]}, box: {entry["box"]}'
+                outf.write(line + "\n")
+    except Exception as e:
+        print(f"ERROR writing text_boxes.txt: {e}")
