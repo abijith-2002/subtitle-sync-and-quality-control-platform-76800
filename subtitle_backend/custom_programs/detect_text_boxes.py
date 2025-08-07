@@ -211,9 +211,13 @@ def process_subtitle_overlap(
     print(f"Video {video_path}: {width}x{height}, {fps} fps, {total_frames} frames")
 
     reader = easyocr.Reader(ocr_languages, gpu=gpu)
+    # Use a hashable key for events (start, end, text)
+    def _mk_event_key(event):
+        # Subtitle text may repeat: include start/end as float(ms), plus stripped text
+        # For SRTs, text is unicode and can include newlines; use consistent representation.
+        return (event.start, event.end, (event.text or "").strip())
     event_region = {}
     for idx, event in enumerate(subs):
-        # Only check Dialogue events; skip comments etc.
         if getattr(event, "type", None) and event.type != "Dialogue":
             continue
         start_ms = event.start
@@ -221,7 +225,6 @@ def process_subtitle_overlap(
         frame_indices = get_frame_indices(start_ms, end_ms, fps, total_frames, sample_rate)
         box_default = default_subtitle_box(width, height, default_region)
         overlap_found = False
-        # For each sampled frame, check for overlap
         for frame_idx in frame_indices:
             cap.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
             ret, frame = cap.read()
@@ -231,13 +234,11 @@ def process_subtitle_overlap(
             region_img = frame[y1:y2, x1:x2]
             if region_img.shape[0] < 5 or region_img.shape[1] < 5:
                 continue
-            # Run EasyOCR on cropped region
             try:
                 result = reader.readtext(region_img, detail=1)
             except Exception as ocr_exc:
                 print(f"OCR ERROR at event {idx}, frame {frame_idx}: {ocr_exc}")
                 continue
-            # Offset the bbox back to original image coordinates
             adjusted = []
             for det in result:
                 adj_pts = [ (pt[0]+x1, pt[1]+y1) for pt in det[0] ]
@@ -245,19 +246,20 @@ def process_subtitle_overlap(
             if text_overlap_in_box(adjusted, box_default):
                 overlap_found = True
                 break
+        event_key = _mk_event_key(event)
         if overlap_found:
-            # Switch to the opposite region
             target_region = "top" if default_region == "bottom" else "bottom"
-            event_region[event] = target_region
+            event_region[event_key] = target_region
         else:
-            event_region[event] = default_region
+            event_region[event_key] = default_region
 
     # Update subs: Use ASS override tags for region (\an2 = bottom center, \an8 = top center)
     an_map = {"bottom": 2, "top": 8}
     for event in subs:
         if getattr(event, "type", None) and event.type != "Dialogue":
             continue
-        region = event_region.get(event, default_region)
+        event_key = _mk_event_key(event)
+        region = event_region.get(event_key, default_region)
         # Remove any explicit \an overrides in-line
         text = event.text
         text_new = re.sub(r"{\\an\\d+}", "", text)
