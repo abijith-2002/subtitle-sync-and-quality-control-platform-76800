@@ -326,8 +326,9 @@ def process_subtitle_overlap(
     # PySubs2 style fields: all in string/integer/numeric (not hex) except colors
     # Make sure we override forcibly (for "Default"), not merge/patch.
     subs.styles.clear()  # remove previous styles
+
+    # SSAStyle in pysubs2 does NOT support 'name' as a __init__ argument, instead, the key in the dict ("Default") is the style name.
     style_default = SSAStyle(
-        name="Default",
         fontname=style_params["fontname"],
         fontsize=style_params["fontsize"],
         primarycolor=style_params["primarycolor"],
@@ -351,6 +352,7 @@ def process_subtitle_overlap(
         marginv=style_params["marginv"],
         encoding=style_params["encoding"]
     )
+    # In pysubs2, the style dict key is the style name
     subs.styles["Default"] = style_default
 
     # Ensure all events use the Default style and correct field ordering
