@@ -4,22 +4,25 @@
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 Collisions: Normal
+Title: 
 ScriptType: v4.00+
+PlayResX: 1920
+PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1
+Style: Default,Arial,20,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,20,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,{\an2}- Because it's pronounced\N"Aaron".
-Dialogue: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,{\an2}- Son of a bitch!
-Dialogue: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,{\an2}You done messed up, A.A. Ron!
-Dialogue: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,{\an2}Now take your ass on down\Nto Oh-Shag-Henessy's office,
-Dialogue: 0,0:00:00.00,0:00:00.00,Default,,0,0,0,,{\an2}right now, and tell him exactly\Nwhat you did!
-Dialogue: 0,0:00:02.08,0:00:04.10,Default,,0,0,0,,{\an8}- Who?\N- Oh-Shag-Henessy!
-Dialogue: 0,0:00:06.04,0:00:07.08,Default,,0,0,0,,{\an8}- Principal O'Shaughnessy?
-Dialogue: 0,0:00:07.24,0:00:09.04,Default,,0,0,0,,{\an8}Get out of my goddamn classroom
-Dialogue: 0,0:00:09.04,0:00:11.16,Default,,0,0,0,,{\an8}before I break\Nmy foot off in your ass!
-Dialogue: 0,0:00:11.16,0:00:12.46,Default,,0,0,0,,{\an8}Insubordinate...
-Dialogue: 0,0:00:13.46,0:00:14.50,Default,,0,0,0,,{\an8}and churlish.
+Dialogue: 0,0:00:00.00,0:00:00.00,Default,,10,10,20,,{\an2}- Because it's pronounced\N"Aaron".
+Dialogue: 0,0:00:00.00,0:00:00.00,Default,,10,10,20,,{\an2}- Son of a bitch!
+Dialogue: 0,0:00:00.00,0:00:00.00,Default,,10,10,20,,{\an2}You done messed up, A.A. Ron!
+Dialogue: 0,0:00:00.00,0:00:00.00,Default,,10,10,20,,{\an2}Now take your ass on down\Nto Oh-Shag-Henessy's office,
+Dialogue: 0,0:00:00.00,0:00:00.00,Default,,10,10,20,,{\an2}right now, and tell him exactly\Nwhat you did!
+Dialogue: 0,0:00:02.08,0:00:04.10,Default,,10,10,20,,{\an8}- Who?\N- Oh-Shag-Henessy!
+Dialogue: 0,0:00:06.04,0:00:07.08,Default,,10,10,20,,{\an8}- Principal O'Shaughnessy?
+Dialogue: 0,0:00:07.24,0:00:09.04,Default,,10,10,20,,{\an8}Get out of my goddamn classroom
+Dialogue: 0,0:00:09.04,0:00:11.16,Default,,10,10,20,,{\an8}before I break\Nmy foot off in your ass!
+Dialogue: 0,0:00:11.16,0:00:12.46,Default,,10,10,20,,{\an8}Insubordinate...
+Dialogue: 0,0:00:13.46,0:00:14.50,Default,,10,10,20,,{\an8}and churlish.

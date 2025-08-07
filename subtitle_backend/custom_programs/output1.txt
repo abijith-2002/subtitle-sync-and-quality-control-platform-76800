@@ -1,1 +1,2 @@
 Video output2.mp4: 1920x1080, 23.979099678456592 fps, 672 frames
+Processed ASS written: output1.ass
