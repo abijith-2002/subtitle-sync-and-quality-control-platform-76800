@@ -24,7 +24,7 @@ import json
 import os
 from typing import List, Tuple
 
-import pytesseract
+import easyocr
 
 
 # PUBLIC_INTERFACE
@@ -92,7 +92,7 @@ def detect_text_regions(frame: np.ndarray) -> List[Tuple[int, int, int, int]]:
 # PUBLIC_INTERFACE
 def detect_text_boxes_in_timeframe(video_path: str, start_sec: float, end_sec: float, fps: int = 1):
     """
-    Detect all text region bounding boxes in the frames between start_sec and end_sec and extract the text within each box.
+    Detect all text region bounding boxes in the frames between start_sec and end_sec and extract the text within each box using EasyOCR.
 
     Args:
         video_path: Path to video.
@@ -103,15 +103,19 @@ def detect_text_boxes_in_timeframe(video_path: str, start_sec: float, end_sec: f
     """
     frames = extract_frames(video_path, start_sec, end_sec, fps=fps)
     results = []
+    # Instantiate the EasyOCR Reader (English only for speed, modify as needed)
+    reader = easyocr.Reader(['en'], gpu=False)
     for idx, frame in enumerate(frames):
         boxes = detect_text_regions(frame)
         for box in boxes:
             x, y, w, h = box
             crop = frame[y:y+h, x:x+w]
-            # Convert to RGB for pytesseract
+            # EasyOCR expects RGB
             crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-            # Extract text with pytesseract
-            text = pytesseract.image_to_string(crop_rgb, config='--psm 6').strip()
+            # Extract text with EasyOCR
+            dets = reader.readtext(crop_rgb, detail=0)
+            # Join results if multiple lines/words detected
+            text = " ".join(dets).strip()
             results.append({
                 "frame_idx": idx,
                 "box": list(box),

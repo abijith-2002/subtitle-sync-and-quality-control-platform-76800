@@ -1,4 +1,4 @@
-frame_idx: 0, box: [34, 1037, 77, 43]
-frame_idx: 0, box: [75, 973, 56, 56]
-frame_idx: 0, box: [1704, 493, 139, 152]
-frame_idx: 0, box: [1262, 287, 92, 52]
+frame_idx: 0, box: [34, 1037, 77, 43], text: 
+frame_idx: 0, box: [75, 973, 56, 56], text: we
+frame_idx: 0, box: [1704, 493, 139, 152], text: 7 |
+frame_idx: 0, box: [1262, 287, 92, 52], text: +S

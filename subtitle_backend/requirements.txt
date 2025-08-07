@@ -44,4 +44,4 @@ websockets==15.0.1
 python-jose[cryptography]
 opencv-python
 numpy
-pytesseract
+easyocr
