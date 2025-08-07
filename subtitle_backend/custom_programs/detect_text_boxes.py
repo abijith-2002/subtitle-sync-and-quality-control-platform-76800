@@ -189,17 +189,17 @@ def process_subtitle_overlap(
 ):
     """
     For each subtitle cue in the subtitle file, uses OCR to check for on-screen text overlap in the default region.
-    If overlap is detected, move the subtitle to 'top' (ASS \\an8); otherwise keep region.
+    If overlap is detected, move the subtitle to 'top' (ASS \an8); otherwise keep region.
     Writes a new ASS file with updated positions.
+    Ensures the output file contains a valid and complete ASS-compliant file: header, styles, events.
     """
     ocr_languages = ocr_languages or ["en"]
-    # Load subtitles (srt or ass) using pysubs2
     try:
         subs = pysubs2.load(subs_path)
     except Exception as e:
         print("Failed to read subtitles:", e)
         sys.exit(1)
-    # Open video and get properties
+
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print("Failed to open video file:", video_path)
@@ -211,12 +211,10 @@ def process_subtitle_overlap(
     print(f"Video {video_path}: {width}x{height}, {fps} fps, {total_frames} frames")
 
     reader = easyocr.Reader(ocr_languages, gpu=gpu)
-    # Use a hashable key for events (start, end, text)
     def _mk_event_key(event):
-        # Subtitle text may repeat: include start/end as float(ms), plus stripped text
-        # For SRTs, text is unicode and can include newlines; use consistent representation.
         return (event.start, event.end, (event.text or "").strip())
     event_region = {}
+
     for idx, event in enumerate(subs):
         if getattr(event, "type", None) and event.type != "Dialogue":
             continue
@@ -253,20 +251,40 @@ def process_subtitle_overlap(
         else:
             event_region[event_key] = default_region
 
-    # Update subs: Use ASS override tags for region (\an2 = bottom center, \an8 = top center)
+    # Update region and override tags
     an_map = {"bottom": 2, "top": 8}
     for event in subs:
         if getattr(event, "type", None) and event.type != "Dialogue":
             continue
         event_key = _mk_event_key(event)
         region = event_region.get(event_key, default_region)
-        # Remove any explicit \an overrides in-line
+        # Remove any explicit \an override tags (robust)
         text = event.text
-        text_new = re.sub(r"{\\an\\d+}", "", text)
+        text_new = re.sub(r"{\\an\d+}", "", text)
         ass_tag = "{\\an%d}" % an_map[region]
         event.text = ass_tag + text_new
+        if not getattr(event, "style", None) or event.style == "":
+            event.style = "Default"
 
-    # Write as ASS file
+    # Patch header and style for robust ASS output
+    # Ensure [Script Info]
+    if not hasattr(subs, "info") or not subs.info:
+        subs.info = pysubs2.SSAFile().info.copy()
+    # V4+ Styles (at least Default)
+    if not hasattr(subs, "styles") or not subs.styles or "Default" not in subs.styles:
+        subs.styles = pysubs2.SSAFile().styles.copy()
+    if "Default" not in subs.styles:
+        subs.styles["Default"] = pysubs2.SSAStyle("Default")
+
+    subs.info["ScriptType"] = "v4.00+"
+    subs.info["WrapStyle"] = "0"
+    subs.info["ScaledBorderAndShadow"] = "yes"
+    subs.info["Collisions"] = "Normal"
+
+    for event in subs.events:
+        if getattr(event, "style", None) is None or event.style == "":
+            event.style = "Default"
+
     try:
         subs.save(output_path, format_="ass")
         print(f"Processed ASS written: {output_path}")
