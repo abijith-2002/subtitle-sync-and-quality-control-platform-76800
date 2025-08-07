@@ -276,19 +276,20 @@ def process_subtitle_overlap(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Detect text bounding boxes or reposition subtitles if overlap with visible text is found.")
     parser.add_argument("--video", required=True, type=str, help="Path to the video file.")
-    parser.add_argument("--start", type=float, help="Start time in seconds (manual OCR mode)")
-    parser.add_argument("--end", type=float, help="End time in seconds (manual OCR mode)")
-    parser.add_argument("--fps", default=1, type=int, help="Frames per second to sample (default: 1)")
+    parser.add_argument("--fps", default=1, type=int, help="Frames per second to sample (manual mode only, default: 1).")
     parser.add_argument("--lang", type=str, default='en', help="Comma-separated OCR language codes (default: en).")
     parser.add_argument("--gpu", action='store_true', help="Use GPU for OCR")
-    parser.add_argument("--subs", type=str, help="Path to subtitle file (SRT or ASS)")
+    parser.add_argument("--subs", type=str, help="Path to subtitle file (SRT or ASS). If specified, manual start/end are ignored and timings are taken from subtitle cues.")
     parser.add_argument("--output", type=str, help="Output ASS file for processed subtitles (required with --subs)")
     parser.add_argument("--sample-rate", type=int, default=2, help="Frames/sec to check for overlap in subtitle mode (default: 2)")
     parser.add_argument("--default-pos", type=str, default="bottom", choices=["bottom", "top"], help="Default subtitle region")
+    parser.add_argument("--start", type=float, help="Start time in seconds (manual OCR mode only, ignored if --subs present)")
+    parser.add_argument("--end", type=float, help="End time in seconds (manual OCR mode only, ignored if --subs present)")
     args = parser.parse_args()
 
     language_list = [code.strip() for code in args.lang.split(',') if code.strip()]
-    # Subtitle file mode: handle overlap for each cue
+
+    # Subtitle file mode (automatically extracts timings from cue intervals)
     if args.subs:
         if not args.output:
             print("Output ASS file required with --subs.")
@@ -299,6 +300,7 @@ if __name__ == "__main__":
         if not os.path.isfile(args.subs):
             print("ERROR: Provided subtitle file does not exist.")
             sys.exit(1)
+        # All start/stop are extracted inside process_subtitle_overlap from the subtitle cues.
         process_subtitle_overlap(
             args.video, args.subs, args.output,
             sample_rate=args.sample_rate,
@@ -308,33 +310,34 @@ if __name__ == "__main__":
         )
         sys.exit(0)
 
-    # Single manual time window: original OCR mode
-    if args.start is None or args.end is None:
-        print("For manual OCR mode you must provide --start and --end.")
-        sys.exit(1)
-    if not os.path.isfile(args.video):
-        print("ERROR: Provided video file does not exist.")
-        sys.exit(1)
-    if args.end < args.start:
-        print("ERROR: End time must be after start time.")
-        sys.exit(1)
-    positions = detect_text_boxes_in_timeframe(
-        args.video, args.start, args.end, fps=args.fps, languages=language_list, gpu=args.gpu
-    )
+    # Manual mode (no subs): require explicit start/end seconds
+    if args.subs is None:
+        if args.start is None or args.end is None:
+            print("For manual OCR mode you must provide --start and --end (not needed if using --subs).")
+            sys.exit(1)
+        if not os.path.isfile(args.video):
+            print("ERROR: Provided video file does not exist.")
+            sys.exit(1)
+        if args.end < args.start:
+            print("ERROR: End time must be after start time.")
+            sys.exit(1)
+        positions = detect_text_boxes_in_timeframe(
+            args.video, args.start, args.end, fps=args.fps, languages=language_list, gpu=args.gpu
+        )
 
-    # Print all boxes and text as JSON
-    print(json.dumps(positions, indent=2, ensure_ascii=False))
+        # Print all boxes and text as JSON
+        print(json.dumps(positions, indent=2, ensure_ascii=False))
 
-    # Print per line, and save to text_boxes.txt
-    txtbox_file = os.path.join(os.path.dirname(__file__), "text_boxes.txt")
-    try:
-        with open(txtbox_file, "w", encoding="utf-8") as outf:
-            for entry in positions:
-                box = entry["box"]
-                text = entry["text"].replace("\n", " ").replace("\r", " ")
-                conf = entry["conf"]
-                line = f'frame_idx: {entry["frame_idx"]}, box: {box}, conf: {conf:.3f}, text: {text}'
-                print(line)
-                outf.write(line + "\n")
-    except Exception as e:
-        print(f"ERROR writing text_boxes.txt: {e}")
+        # Print per line, and save to text_boxes.txt
+        txtbox_file = os.path.join(os.path.dirname(__file__), "text_boxes.txt")
+        try:
+            with open(txtbox_file, "w", encoding="utf-8") as outf:
+                for entry in positions:
+                    box = entry["box"]
+                    text = entry["text"].replace("\n", " ").replace("\r", " ")
+                    conf = entry["conf"]
+                    line = f'frame_idx: {entry["frame_idx"]}, box: {box}, conf: {conf:.3f}, text: {text}'
+                    print(line)
+                    outf.write(line + "\n")
+        except Exception as e:
+            print(f"ERROR writing text_boxes.txt: {e}")
